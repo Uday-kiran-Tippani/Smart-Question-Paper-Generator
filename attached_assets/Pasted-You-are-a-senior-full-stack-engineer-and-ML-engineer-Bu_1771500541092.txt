@@ -1,0 +1,329 @@
+You are a senior full-stack engineer and ML engineer.
+Build a complete production-ready web application called:
+
+SMART QUESTION PAPER GENERATOR (ML-Based)
+
+This must be a fully functional web app using:
+
+🔧 TECH STACK (STRICTLY FOLLOW THIS)
+
+Backend: Python with FastAPI
+
+Database: SQLite
+
+ORM: SQLAlchemy
+
+Authentication: JWT-based authentication
+
+ML: scikit-learn + pandas + numpy
+
+PDF Export: reportlab
+
+Word Export: python-docx
+
+Frontend: HTML + CSS + Bootstrap (or simple React if needed)
+
+Deployment-ready structure
+
+📌 PROJECT OVERVIEW
+
+The Smart Question Paper Generator is a web-based ML-powered system that:
+
+Stores a centralized question bank
+
+Categorizes questions by subject, topic, difficulty, and marks
+
+Tracks question usage history
+
+Uses machine learning to reduce repetition
+
+Generates balanced question papers automatically
+
+Exports question papers as PDF and Word files
+
+Provides secure role-based access (Admin, Teacher)
+
+🔐 MODULE 1: AUTHENTICATION SYSTEM
+
+Implement:
+
+User registration
+
+Secure login
+
+Password hashing using bcrypt
+
+JWT token generation
+
+Role-based access control
+
+Roles:
+
+Admin
+
+Teacher
+
+Admin can:
+
+Manage users
+
+View analytics
+
+Manage all questions
+
+Teacher can:
+
+Add/update questions
+
+Generate question papers
+
+🗄 MODULE 2: DATABASE DESIGN (SQLite)
+
+Create the following tables using SQLAlchemy:
+
+Users
+
+id
+
+username
+
+email
+
+password_hash
+
+role
+
+created_at
+
+Questions
+
+id
+
+subject
+
+topic
+
+difficulty (Easy, Medium, Hard)
+
+question_type (MCQ, Short, Long)
+
+marks
+
+content
+
+times_used
+
+last_used
+
+created_by
+
+created_at
+
+is_active
+
+GeneratedPapers
+
+id
+
+subject
+
+total_marks
+
+difficulty_distribution
+
+created_by
+
+created_at
+
+PaperQuestions
+
+id
+
+paper_id
+
+question_id
+
+🤖 MODULE 3: MACHINE LEARNING ENGINE
+
+Create a separate folder:
+
+/ml_engine/
+
+Implement:
+
+Usage pattern analysis
+
+Question repetition minimization
+
+Difficulty balancing algorithm
+
+Weighted selection logic
+
+ML Requirements:
+
+Use pandas to analyze question history
+
+Use scikit-learn for:
+
+Clustering questions by topic
+
+Predicting reuse probability
+
+Implement weighted random selection:
+
+Lower weight for frequently used questions
+
+Higher weight for less-used questions
+
+The ML system must:
+
+Avoid selecting recently used questions
+
+Maintain requested difficulty distribution
+
+Maintain requested marks distribution
+
+Ensure topic coverage balance
+
+📄 MODULE 4: QUESTION PAPER GENERATOR
+
+Create an API endpoint:
+
+POST /generate-paper
+
+Input parameters:
+
+subject
+
+total_marks
+
+difficulty_distribution (percentage)
+
+question_type_distribution
+
+Process:
+
+Use ML engine to intelligently select questions
+
+Organize into sections:
+Section A – MCQs
+Section B – Short Answer
+Section C – Long Answer
+
+Auto numbering
+
+Auto marks display
+
+📑 MODULE 5: EXPORT FEATURES
+
+Implement:
+
+PDF Export using reportlab
+
+Word export using python-docx
+
+PDF must:
+
+Have title
+
+Subject name
+
+Time
+
+Total marks
+
+Sections clearly formatted
+
+📊 MODULE 6: ANALYTICS DASHBOARD
+
+Create dashboard showing:
+
+Most used questions
+
+Difficulty distribution graph
+
+Subject-wise question count
+
+Recently generated papers
+
+Use simple charts (matplotlib).
+
+📂 PROJECT STRUCTURE (STRICTLY FOLLOW)
+
+backend/
+│
+├── app/
+│ ├── main.py
+│ ├── database.py
+│ ├── models.py
+│ ├── schemas.py
+│ ├── auth.py
+│ ├── routers/
+│ ├── services/
+│ ├── ml_engine/
+│ ├── utils/
+│
+├── requirements.txt
+
+frontend/
+│
+├── templates/
+├── static/
+
+🧠 ADVANCED FEATURES
+
+Also include:
+
+Bloom’s Taxonomy tagging field
+
+Question similarity detection using TF-IDF
+
+Audit logs
+
+CSV bulk question upload
+
+🔒 SECURITY REQUIREMENTS
+
+JWT protection for all protected routes
+
+Role-based route protection
+
+Input validation
+
+Secure password hashing
+
+Prevent duplicate question insertion
+
+📦 REQUIREMENTS.TXT MUST INCLUDE
+
+fastapi
+uvicorn
+sqlalchemy
+passlib[bcrypt]
+python-jose
+pandas
+numpy
+scikit-learn
+reportlab
+python-docx
+matplotlib
+
+🎯 FINAL REQUIREMENTS
+
+Code must be modular and clean
+
+Proper comments
+
+Fully working APIs
+
+No placeholder pseudo-code
+
+Ready to run with:
+
+uvicorn app.main:app --reload
+
+Include sample seed data
+
+Include instructions to run project
+
+Generate complete production-ready code now.
