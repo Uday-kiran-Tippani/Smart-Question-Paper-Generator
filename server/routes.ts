@@ -213,7 +213,9 @@ export async function registerRoutes(
       const paper = await storage.createPaper({
         title: input.title,
         subject: input.subject,
+        className: input.className,
         totalMarks: input.totalMarks,
+        durationMinutes: input.durationMinutes,
         difficultyDistribution: input.difficultyDistribution,
         createdBy: 1, // Default to admin/first user for now (or use JWT decoded id)
       });

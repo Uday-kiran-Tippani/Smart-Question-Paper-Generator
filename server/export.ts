@@ -18,6 +18,7 @@ export async function generatePDF(paper: GeneratedPaper, questions: Question[]):
     
     // Header Info
     doc.fontSize(12).text(`Subject: ${paper.subject}`, { align: "left" });
+    doc.text(`Class: ${paper.className}`, { align: "left" });
     doc.text(`Total Marks: ${paper.totalMarks}`, { align: "left" });
     doc.text(`Duration: ${paper.durationMinutes} minutes`, { align: "left" });
     doc.moveDown();

@@ -96,7 +96,9 @@ export const api = {
       input: z.object({
         title: z.string(),
         subject: z.string(),
+        className: z.string(),
         totalMarks: z.number().min(10).max(500),
+        durationMinutes: z.number().min(10).max(300),
         difficultyDistribution: z.object({
           Easy: z.number().min(0).max(100),
           Medium: z.number().min(0).max(100),

@@ -1,0 +1,93 @@
+You are an expert full-stack developer and ML engineer.
+I already have a fully developed Smart Question Paper Generator web app (FastAPI + SQLite + HTML/CSS/JS).
+
+Now I want you to enhance and fix the following features while keeping all existing functionality intact.
+
+🔧 FIXES & ENHANCEMENTS
+1️⃣ Login / Register Page
+
+Add a password eye icon to toggle show/hide password for both login and registration forms.
+
+Ensure the eye icon works correctly on all browsers.
+
+Password visibility toggle should not break form submission.
+
+2️⃣ Question Bank Module
+
+Add Question: Fix so new questions are saved properly in the database.
+
+Delete Question: Fix deletion so selected questions are removed correctly.
+
+Search Question: Implement working search by keyword, subject, and topic.
+
+MCQ Question Type:
+
+When MCQ is selected, dynamically show fields for entering options (A, B, C, D).
+
+Also include a field to select the correct answer.
+
+Other Question Types: For Short/Long answers, hide options fields.
+
+3️⃣ Exam Metadata
+
+Add duration input field when generating the exam (e.g., in minutes).
+
+Add class input field where faculty can specify the class for which exam is being conducted (e.g., MCA, B-Tech, M-Tech, etc.).
+
+Ensure these values are saved in the database and shown in the generated question paper.
+
+4️⃣ PDF Export
+
+Fix the Export PDF button so it generates a proper downloadable PDF (currently only print works).
+
+PDF should include:
+
+Exam Title / Subject
+
+Total Marks
+
+Duration
+
+Class Name
+
+Section-wise questions (A, B, C)
+
+Marks per question
+
+Ensure PDF generation works across browsers.
+
+5️⃣ General Fixes
+
+Keep existing ML-based question selection intact.
+
+Ensure form validations are applied everywhere.
+
+Code must remain modular and clean.
+
+📂 TECH REQUIREMENTS (STAY SAME)
+
+Backend: Python + FastAPI
+
+Database: SQLite + SQLAlchemy
+
+Frontend: HTML, CSS, JS (or React if already implemented)
+
+ML: scikit-learn + pandas + numpy
+
+PDF: reportlab
+
+Word: python-docx
+
+💻 OUTPUT EXPECTATION
+
+Fully working web app with all above fixes and features.
+
+Correct database updates for add/delete/search questions.
+
+Dynamic MCQ options fields for MCQ questions.
+
+Exam duration and class input stored and reflected in generated question paper.
+
+PDF export fully functional and formatted.
+
+Password show/hide toggle working properly.

@@ -35,6 +35,7 @@ export const questions = pgTable("questions", {
   createdAt: timestamp("created_at").defaultNow(),
   isActive: boolean("is_active").default(true).notNull(),
   bloomsTaxonomy: text("blooms_taxonomy"), // Added Bloom's Taxonomy field
+  className: text("class_name"), // Added class field
 });
 
 // === GENERATED PAPERS TABLE ===
@@ -42,8 +43,9 @@ export const generatedPapers = pgTable("generated_papers", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   subject: text("subject").notNull(),
+  className: text("class_name").notNull(), // Added class field
   totalMarks: integer("total_marks").notNull(),
-  durationMinutes: integer("duration_minutes").default(180),
+  durationMinutes: integer("duration_minutes").default(180).notNull(), // Ensured not null
   difficultyDistribution: jsonb("difficulty_distribution").notNull(), // e.g. { Easy: 30, Medium: 50, Hard: 20 }
   createdBy: integer("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
