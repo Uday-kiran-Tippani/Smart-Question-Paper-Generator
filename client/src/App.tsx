@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react";
 
 import AuthPage from "@/pages/auth";
 import DashboardPage from "@/pages/dashboard";
-import QuestionsPage from "@/pages/questions";
+import SubjectsPage from "@/pages/subjects";
 import GeneratePaperPage from "@/pages/generate-paper";
 import PaperDetailPage from "@/pages/paper-detail";
 import PapersListPage from "@/pages/papers-list";
@@ -39,12 +39,12 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <Route path="/" component={() => <ProtectedRoute component={DashboardPage} />} />
-      <Route path="/questions" component={() => <ProtectedRoute component={QuestionsPage} />} />
+      <Route path="/subjects" component={() => <ProtectedRoute component={SubjectsPage} />} />
       <Route path="/generate" component={() => <ProtectedRoute component={GeneratePaperPage} />} />
       <Route path="/papers" component={() => <ProtectedRoute component={PapersListPage} />} />
       <Route path="/papers/:id" component={PaperDetailPage} /> {/* ProtectedRoute wrapped inside details component logic or here? Let's leave it protected by sidebar shell logic mostly, but explicitly: */}
       {/* For papers/:id, let's just let the page handle loading state or auth redirect if usePaper fails due to 401 */}
-      
+
       <Route component={NotFound} />
     </Switch>
   );

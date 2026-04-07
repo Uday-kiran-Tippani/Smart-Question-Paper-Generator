@@ -1,93 +1,131 @@
-
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, pgEnum } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { pgTable, text, serial, integer, timestamp, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums for categorization
 export const difficultyEnum = pgEnum("difficulty", ["Easy", "Medium", "Hard"]);
-export const questionTypeEnum = pgEnum("question_type", ["MCQ", "Short", "Long"]);
-export const roleEnum = pgEnum("role", ["Admin", "Teacher"]);
+export const roleEnum = pgEnum("role", ["admin", "lecturer"]);
+export const examTypeEnum = pgEnum("exam_type", ["MID-1&2", "MID-3&4", "SEMESTER", "OTHERS"]);
+export const questionTypeEnum = pgEnum("question_type", ["Short", "Long", "MCQ", "Analytical"]);
+export const questionSourceEnum = pgEnum("question_source", ["AI", "Database"]);
 
 // === USERS TABLE ===
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  email: text("email").notNull().unique(), // Added email as per requirements
-  password: text("password").notNull(),
-  role: roleEnum("role").default("Teacher").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: roleEnum("role").default("lecturer").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// === QUESTIONS TABLE ===
-export const questions = pgTable("questions", {
+// === SUBJECTS TABLE ===
+export const subjects = pgTable("subjects", {
   id: serial("id").primaryKey(),
-  subject: text("subject").notNull(),
-  topic: text("topic").notNull(),
-  difficulty: difficultyEnum("difficulty").notNull(),
-  type: questionTypeEnum("question_type").notNull(),
-  marks: integer("marks").notNull(),
-  content: text("content").notNull(),
-  options: jsonb("options"), // For MCQs: { a: "...", b: "...", ... }
-  correctAnswer: text("correct_answer"), // Optional answer key
-  timesUsed: integer("times_used").default(0).notNull(),
-  lastUsed: timestamp("last_used"),
-  createdBy: integer("created_by").references(() => users.id),
+  name: text("name").notNull(),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: 'cascade' }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
-  isActive: boolean("is_active").default(true).notNull(),
-  bloomsTaxonomy: text("blooms_taxonomy"), // Added Bloom's Taxonomy field
-  className: text("class_name"), // Added class field
+});
+
+// === UNITS TABLE ===
+export const units = pgTable("units", {
+  id: serial("id").primaryKey(),
+  subjectId: integer("subject_id").references(() => subjects.id, { onDelete: 'cascade' }).notNull(),
+  unitNumber: integer("unit_number").notNull(),
+  title: text("title").notNull(),
+  syllabusContent: text("syllabus_content").notNull(),
 });
 
 // === GENERATED PAPERS TABLE ===
 export const generatedPapers = pgTable("generated_papers", {
   id: serial("id").primaryKey(),
+  subjectId: integer("subject_id").references(() => subjects.id, { onDelete: 'cascade' }).notNull(),
   title: text("title").notNull(),
-  subject: text("subject").notNull(),
-  className: text("class_name").notNull(), // Added class field
+  durationMinutes: integer("duration_minutes").default(180).notNull(),
   totalMarks: integer("total_marks").notNull(),
-  durationMinutes: integer("duration_minutes").default(180).notNull(), // Ensured not null
-  difficultyDistribution: jsonb("difficulty_distribution").notNull(), // e.g. { Easy: 30, Medium: 50, Hard: 20 }
-  createdBy: integer("created_by").references(() => users.id),
+  examType: examTypeEnum("exam_type").notNull(),
+  difficultyDistribution: jsonb("difficulty_distribution").notNull(), // { Easy: number, Medium: number, Hard: number }
+  marksDistribution: jsonb("marks_distribution").notNull(), // { "2m": number, "5m": number, "10m": number, "15m": number }
+  generatedContent: text("generated_content").notNull(),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: 'cascade' }).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// === PAPER QUESTIONS (Join Table) ===
-export const paperQuestions = pgTable("paper_questions", {
+// === GENERATED QUESTIONS TABLE ===
+// Store individual questions from the generated paper for future analytics
+export const generatedQuestions = pgTable("generated_questions", {
   id: serial("id").primaryKey(),
-  paperId: integer("paper_id").references(() => generatedPapers.id).notNull(),
-  questionId: integer("question_id").references(() => questions.id).notNull(),
+  paperId: integer("paper_id").references(() => generatedPapers.id, { onDelete: 'cascade' }).notNull(),
+  questionText: text("question_text").notNull(),
+  marks: integer("marks").notNull(),
+  difficulty: difficultyEnum("difficulty").notNull(),
+});
+
+// === QUESTION BANK TABLE ===
+// Global repository of all generated questions for hybrid caching
+export const questionBank = pgTable("question_bank", {
+  id: serial("id").primaryKey(),
+  subjectId: integer("subject_id").references(() => subjects.id, { onDelete: 'cascade' }).notNull(),
+  unitId: integer("unit_id").references(() => units.id, { onDelete: 'cascade' }).notNull(),
+  questionText: text("question_text").notNull(),
+  questionType: questionTypeEnum("question_type").notNull(),
+  marks: integer("marks").notNull(),
+  difficultyLevel: difficultyEnum("difficulty_level").notNull(),
+  source: questionSourceEnum("source").default("AI").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // === SCHEMAS ===
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
-export const insertQuestionSchema = createInsertSchema(questions).omit({ id: true, timesUsed: true, lastUsed: true, createdAt: true });
-export const insertPaperSchema = createInsertSchema(generatedPapers).omit({ id: true, createdAt: true });
+export const selectUserSchema = createSelectSchema(users);
+
+export const insertSubjectSchema = createInsertSchema(subjects).omit({ id: true, createdAt: true, createdBy: true });
+export const selectSubjectSchema = createSelectSchema(subjects);
+
+export const insertUnitSchema = createInsertSchema(units).omit({ id: true });
+export const selectUnitSchema = createSelectSchema(units);
+
+export const insertPaperSchema = createInsertSchema(generatedPapers).omit({ id: true, createdAt: true, createdBy: true, generatedContent: true });
+export const selectPaperSchema = createSelectSchema(generatedPapers);
+
+export const insertGeneratedQuestionSchema = createInsertSchema(generatedQuestions).omit({ id: true });
+export const selectGeneratedQuestionSchema = createSelectSchema(generatedQuestions);
+
+export const insertQuestionBankSchema = createInsertSchema(questionBank).omit({ id: true, createdAt: true });
+export const selectQuestionBankSchema = createSelectSchema(questionBank);
+
+export const updateSubjectSchema = insertSubjectSchema.partial();
+export const updateUnitSchema = insertUnitSchema.partial();
 
 // === TYPES ===
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type Question = typeof questions.$inferSelect;
-export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
+
+export type Subject = typeof subjects.$inferSelect;
+export type InsertSubject = z.infer<typeof insertSubjectSchema>;
+
+export type Unit = typeof units.$inferSelect;
+export type InsertUnit = z.infer<typeof insertUnitSchema>;
+
 export type GeneratedPaper = typeof generatedPapers.$inferSelect;
 export type InsertPaper = z.infer<typeof insertPaperSchema>;
 
-// API Types
-export type LoginRequest = { username: string; password: string };
+export type GeneratedQuestion = typeof generatedQuestions.$inferSelect;
+export type InsertGeneratedQuestion = z.infer<typeof insertGeneratedQuestionSchema>;
+
+export type QuestionBankItem = typeof questionBank.$inferSelect;
+export type InsertQuestionBankItem = z.infer<typeof insertQuestionBankSchema>;
+
+// API Request Types
+export type LoginRequest = { email: string; passwordHash: string }; // Plain password passed before hashing
 export type AuthResponse = { user: User; token: string };
 
 export type GeneratePaperRequest = {
   title: string;
-  subject: string;
+  subjectId: number;
   totalMarks: number;
-  difficultyDistribution: { Easy: number; Medium: number; Hard: number }; // Percentages
-  questionTypeDistribution?: { MCQ: number; Short: number; Long: number }; // Percentages (optional)
-  topics?: string[]; // Optional topic filter
-};
-
-export type DashboardStats = {
-  totalQuestions: number;
-  questionsBySubject: Record<string, number>;
-  questionsByDifficulty: Record<string, number>;
-  totalPapers: number;
-  recentPapers: GeneratedPaper[];
+  durationMinutes: number;
+  examType: "MID-1&2" | "MID-3&4" | "SEMESTER" | "OTHERS";
+  difficultyDistribution: { Easy: number; Medium: number; Hard: number }; // Percentages summing to 100
+  marksDistribution: Record<string, number>; // How many of each mark type
 };

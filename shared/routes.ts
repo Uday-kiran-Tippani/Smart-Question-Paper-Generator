@@ -1,6 +1,5 @@
-
 import { z } from 'zod';
-import { insertUserSchema, insertQuestionSchema, insertPaperSchema, questions, generatedPapers } from './schema';
+import { insertUserSchema, insertSubjectSchema, insertUnitSchema, insertPaperSchema } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -24,69 +23,61 @@ export const api = {
       method: 'POST' as const,
       path: '/api/auth/register' as const,
       input: insertUserSchema,
-      responses: {
-        201: z.object({ id: z.number(), username: z.string(), role: z.string() }), // Don't return password
-        400: errorSchemas.validation,
-      },
     },
     login: {
       method: 'POST' as const,
       path: '/api/auth/login' as const,
-      input: z.object({ username: z.string(), password: z.string() }),
-      responses: {
-        200: z.object({ user: z.any(), token: z.string() }), // Simplified for now
-        401: errorSchemas.unauthorized,
-      },
+      input: z.object({ email: z.string(), passwordHash: z.string() }),
     },
     me: {
       method: 'GET' as const,
       path: '/api/auth/me' as const,
-      responses: {
-        200: z.any(),
-        401: errorSchemas.unauthorized,
-      },
     },
   },
-  questions: {
+  subjects: {
     list: {
       method: 'GET' as const,
-      path: '/api/questions' as const,
-      input: z.object({
-        subject: z.string().optional(),
-        topic: z.string().optional(),
-        difficulty: z.enum(['Easy', 'Medium', 'Hard']).optional(),
-        type: z.enum(['MCQ', 'Short', 'Long']).optional(),
-        search: z.string().optional(),
-      }).optional(),
+      path: '/api/subjects' as const,
       responses: {
-        200: z.array(z.custom<typeof questions.$inferSelect>()),
-      },
+        200: z.array(z.any()), // Subject schema
+      }
     },
     create: {
       method: 'POST' as const,
-      path: '/api/questions' as const,
-      input: insertQuestionSchema,
-      responses: {
-        201: z.custom<typeof questions.$inferSelect>(),
-        400: errorSchemas.validation,
-      },
+      path: '/api/subjects' as const,
+      input: insertSubjectSchema,
     },
-    bulkCreate: {
-      method: 'POST' as const,
-      path: '/api/questions/bulk' as const,
-      input: z.array(insertQuestionSchema),
-      responses: {
-        201: z.object({ count: z.number() }),
-        400: errorSchemas.validation,
-      },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/subjects/:id' as const,
+      input: z.object({ name: z.string() }),
     },
     delete: {
       method: 'DELETE' as const,
-      path: '/api/questions/:id' as const,
+      path: '/api/subjects/:id' as const,
+    },
+  },
+  units: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/subjects/:subjectId/units' as const,
       responses: {
-        204: z.void(),
-        404: errorSchemas.notFound,
-      },
+        200: z.array(z.any()), // Unit schema
+      }
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/subjects/:subjectId/units' as const,
+      input: insertUnitSchema,
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/subjects/:subjectId/units/:unitId' as const,
+      input: insertUnitSchema.partial(),
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/subjects/:subjectId/units/:unitId' as const,
     },
   },
   papers: {
@@ -95,44 +86,46 @@ export const api = {
       path: '/api/papers/generate' as const,
       input: z.object({
         title: z.string(),
-        subject: z.string(),
-        className: z.string(),
+        subjectId: z.number(),
         totalMarks: z.number().min(10).max(500),
         durationMinutes: z.number().min(10).max(300),
+        examType: z.enum(['MID-1&2', 'MID-3&4', 'SEMESTER', 'OTHERS']),
         difficultyDistribution: z.object({
           Easy: z.number().min(0).max(100),
           Medium: z.number().min(0).max(100),
           Hard: z.number().min(0).max(100),
         }),
-        topics: z.array(z.string()).optional(),
+        marksDistribution: z.record(z.string(), z.number()),
       }),
       responses: {
-        201: z.custom<typeof generatedPapers.$inferSelect & { questions: (typeof questions.$inferSelect)[] }>(),
-        400: errorSchemas.validation,
-      },
+        201: z.any(), // GeneratedPaper schema
+      }
     },
     list: {
       method: 'GET' as const,
       path: '/api/papers' as const,
       responses: {
-        200: z.array(z.custom<typeof generatedPapers.$inferSelect>()),
-      },
+        200: z.array(z.any()), // GeneratedPaper schema
+      }
     },
     get: {
       method: 'GET' as const,
       path: '/api/papers/:id' as const,
       responses: {
-        200: z.custom<typeof generatedPapers.$inferSelect & { questions: (typeof questions.$inferSelect)[] }>(),
-        404: errorSchemas.notFound,
-      },
+        200: z.any(), // GeneratedPaper schema
+      }
     },
     export: {
       method: 'GET' as const,
-      path: '/api/papers/:id/export/:format' as const, // format: pdf or docx
+      path: '/api/papers/:id/export/:format' as const,
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/papers/:id' as const,
+      input: z.object({ generatedContent: z.string() }),
       responses: {
-        200: z.any(), // File stream
-        404: errorSchemas.notFound,
-      },
+        200: z.any(), // GeneratedPaper schema
+      }
     },
   },
   analytics: {
@@ -140,14 +133,8 @@ export const api = {
       method: 'GET' as const,
       path: '/api/analytics/dashboard' as const,
       responses: {
-        200: z.object({
-          totalQuestions: z.number(),
-          questionsBySubject: z.record(z.number()),
-          questionsByDifficulty: z.record(z.number()),
-          totalPapers: z.number(),
-          recentPapers: z.array(z.custom<typeof generatedPapers.$inferSelect>()),
-        }),
-      },
+        200: z.any(),
+      }
     },
   },
 };

@@ -1,11 +1,11 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Database, 
-  LogOut, 
-  Menu, 
+import {
+  LayoutDashboard,
+  FileText,
+  Database,
+  LogOut,
+  Menu,
   X,
   Sparkles
 } from "lucide-react";
@@ -20,7 +20,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/questions", label: "Question Bank", icon: Database },
+    { href: "/subjects", label: "Subjects", icon: Database },
     { href: "/papers", label: "Papers", icon: FileText },
     { href: "/generate", label: "Generate New", icon: Sparkles },
   ];
@@ -35,15 +35,15 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
           <span className="font-display font-bold text-xl tracking-tight">SmartPaper</span>
         </div>
       </div>
-      
+
       <div className="flex-1 py-6 px-4 space-y-1">
         {navItems.map((item) => {
           const isActive = location === item.href;
           return (
             <Link key={item.href} href={item.href} className={`
               flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-              ${isActive 
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
+              ${isActive
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }
             `}>
@@ -64,8 +64,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
           onClick={() => logout.mutate()}
         >
@@ -85,7 +85,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Sidebar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-40 px-4 flex items-center justify-between">
-         <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
             <Sparkles className="h-5 w-5 text-primary-foreground" />
           </div>

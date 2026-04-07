@@ -1,52 +1,66 @@
-
 import { db } from "./db";
+import { eq, desc, sql, and } from "drizzle-orm";
 import {
-  users, questions, generatedPapers, paperQuestions,
+  users, subjects, units, generatedPapers, generatedQuestions, questionBank,
   type User, type InsertUser,
-  type Question, type InsertQuestion,
-  type GeneratedPaper, type InsertPaper
+  type Subject, type InsertSubject,
+  type Unit, type InsertUnit,
+  type GeneratedPaper, type InsertPaper,
+  type GeneratedQuestion, type InsertGeneratedQuestion,
+  type QuestionBankItem, type InsertQuestionBankItem
 } from "@shared/schema";
-import { eq, desc, sql, inArray, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
-  // Questions
-  getQuestions(filters?: { subject?: string; topic?: string; difficulty?: string; type?: string }): Promise<Question[]>;
-  getQuestion(id: number): Promise<Question | undefined>;
-  createQuestion(question: InsertQuestion): Promise<Question>;
-  createQuestionsBulk(questionsList: InsertQuestion[]): Promise<number>;
-  updateQuestionUsage(id: number): Promise<void>;
-  deleteQuestion(id: number): Promise<void>;
+  // Subjects
+  getSubjects(): Promise<Subject[]>;
+  getSubject(id: number): Promise<Subject | undefined>;
+  createSubject(subject: InsertSubject & { createdBy: number }): Promise<Subject>;
+  updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject>;
+  deleteSubject(id: number): Promise<void>;
+
+  // Units
+  getUnitsBySubject(subjectId: number): Promise<Unit[]>;
+  createUnit(unit: InsertUnit): Promise<Unit>;
+  updateUnit(id: number, unit: Partial<InsertUnit>): Promise<Unit>;
+  deleteUnit(id: number): Promise<void>;
 
   // Papers
-  createPaper(paper: InsertPaper): Promise<GeneratedPaper>;
-  addQuestionsToPaper(paperId: number, questionIds: number[]): Promise<void>;
-  getPaper(id: number): Promise<(GeneratedPaper & { questions: Question[] }) | undefined>;
-  getPapers(): Promise<GeneratedPaper[]>;
-  getUserPapers(userId: number): Promise<GeneratedPaper[]>;
+  createPaper(paper: InsertPaper & { createdBy: number; generatedContent: string }): Promise<GeneratedPaper>;
+  saveGeneratedQuestions(questions: InsertGeneratedQuestion[]): Promise<void>;
+  getPaper(id: number): Promise<(GeneratedPaper & { subject?: string; questions: GeneratedQuestion[] }) | undefined>;
+  getPapers(): Promise<(GeneratedPaper & { subject?: string })[]>;
+  getUserPapers(userId: number): Promise<(GeneratedPaper & { subject?: string })[]>;
+  updatePaper(id: number, content: string): Promise<GeneratedPaper>;
+
+  // Question Bank
+  getQuestionBankQuestions(subjectId: number, unitId: number, difficulty: string, type: string, limit: number): Promise<QuestionBankItem[]>;
+  saveQuestionBankQuestions(questions: InsertQuestionBankItem[]): Promise<QuestionBankItem[]>;
 
   // Analytics
   getDashboardStats(): Promise<{
-    totalQuestions: number;
-    questionsBySubject: Record<string, number>;
-    questionsByDifficulty: Record<string, number>;
+    totalSubjects: number;
     totalPapers: number;
-    recentPapers: GeneratedPaper[];
+    totalQuestionsGenerated: number;
+    questionsByDifficulty: Record<string, number>;
+    questionsBySubject: Record<string, number>;
+    recentPapers: any[];
   }>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // User methods
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
@@ -55,110 +69,189 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  async getQuestions(filters?: { subject?: string; topic?: string; difficulty?: string; type?: string }): Promise<Question[]> {
-    const conditions = [];
-    if (filters?.subject) conditions.push(eq(questions.subject, filters.subject));
-    if (filters?.topic) conditions.push(eq(questions.topic, filters.topic));
-    // Cast difficulty and type to their enum types for comparison, or let Drizzle handle it if types match
-    if (filters?.difficulty) conditions.push(eq(questions.difficulty, filters.difficulty as any));
-    if (filters?.type) conditions.push(eq(questions.type, filters.type as any));
-
-    if (conditions.length > 0) {
-      return await db.select().from(questions).where(and(...conditions)).orderBy(desc(questions.createdAt));
-    }
-    return await db.select().from(questions).orderBy(desc(questions.createdAt));
+  // Subject methods
+  async getSubjects(): Promise<Subject[]> {
+    return await db.select().from(subjects).orderBy(desc(subjects.createdAt));
   }
 
-  async getQuestion(id: number): Promise<Question | undefined> {
-    const [question] = await db.select().from(questions).where(eq(questions.id, id));
-    return question;
+  async getSubject(id: number): Promise<Subject | undefined> {
+    const [subject] = await db.select().from(subjects).where(eq(subjects.id, id));
+    return subject;
   }
 
-  async createQuestion(question: InsertQuestion): Promise<Question> {
-    const [newQuestion] = await db.insert(questions).values(question).returning();
-    return newQuestion;
+  async createSubject(subject: InsertSubject & { createdBy: number }): Promise<Subject> {
+    const [newSubject] = await db.insert(subjects).values(subject).returning();
+    return newSubject;
   }
 
-  async createQuestionsBulk(questionsList: InsertQuestion[]): Promise<number> {
-    const result = await db.insert(questions).values(questionsList).returning();
-    return result.length;
+  async updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject> {
+    const [updated] = await db.update(subjects).set(subject).where(eq(subjects.id, id)).returning();
+    if (!updated) throw new Error("Subject not found");
+    return updated;
   }
 
-  async updateQuestionUsage(id: number): Promise<void> {
-    await db.update(questions)
-      .set({
-        timesUsed: sql`${questions.timesUsed} + 1`,
-        lastUsed: new Date()
-      })
-      .where(eq(questions.id, id));
+  async deleteSubject(id: number): Promise<void> {
+    await db.delete(subjects).where(eq(subjects.id, id));
   }
 
-  async deleteQuestion(id: number): Promise<void> {
-    await db.delete(questions).where(eq(questions.id, id));
+  // Unit methods
+  async getUnitsBySubject(subjectId: number): Promise<Unit[]> {
+    return await db.select().from(units).where(eq(units.subjectId, subjectId)).orderBy(units.unitNumber);
   }
 
-  async createPaper(paper: InsertPaper): Promise<GeneratedPaper> {
+  async createUnit(unit: InsertUnit): Promise<Unit> {
+    const [newUnit] = await db.insert(units).values(unit).returning();
+    return newUnit;
+  }
+
+  async updateUnit(id: number, unit: Partial<InsertUnit>): Promise<Unit> {
+    const [updated] = await db.update(units).set(unit).where(eq(units.id, id)).returning();
+    if (!updated) throw new Error("Unit not found");
+    return updated;
+  }
+
+  async deleteUnit(id: number): Promise<void> {
+    await db.delete(units).where(eq(units.id, id));
+  }
+
+  // Question Bank
+  async getQuestionBankQuestions(subjectId: number, unitId: number, difficulty: any, type: any, limit: number): Promise<QuestionBankItem[]> {
+    // Randomly order the fetched questions using raw SQL 'RANDOM()'
+    return await db.select()
+      .from(questionBank)
+      .where(
+        and(
+          eq(questionBank.subjectId, subjectId),
+          eq(questionBank.unitId, unitId),
+          eq(questionBank.difficultyLevel, difficulty),
+          eq(questionBank.questionType, type)
+        )
+      )
+      .orderBy(sql`RANDOM()`)
+      .limit(limit);
+  }
+
+  async saveQuestionBankQuestions(questions: InsertQuestionBankItem[]): Promise<QuestionBankItem[]> {
+    if (questions.length === 0) return [];
+    return await db.insert(questionBank).values(questions).returning();
+  }
+
+  // Paper and Question methods
+  async createPaper(paper: InsertPaper & { createdBy: number; generatedContent: string }): Promise<GeneratedPaper> {
     const [newPaper] = await db.insert(generatedPapers).values(paper).returning();
     return newPaper;
   }
 
-  async addQuestionsToPaper(paperId: number, questionIds: number[]): Promise<void> {
-    if (questionIds.length === 0) return;
-    const values = questionIds.map(qid => ({
-      paperId,
-      questionId: qid
-    }));
-    await db.insert(paperQuestions).values(values);
+  async saveGeneratedQuestions(qList: InsertGeneratedQuestion[]): Promise<void> {
+    if (qList.length === 0) return;
+    await db.insert(generatedQuestions).values(qList);
   }
 
-  async getPaper(id: number): Promise<(GeneratedPaper & { questions: Question[] }) | undefined> {
-    const [paper] = await db.select().from(generatedPapers).where(eq(generatedPapers.id, id));
-    if (!paper) return undefined;
+  async getPaper(id: number): Promise<(GeneratedPaper & { subject?: string; questions: GeneratedQuestion[] }) | undefined> {
+    const [row] = await db.select({
+      paper: generatedPapers,
+      subjectName: subjects.name
+    })
+      .from(generatedPapers)
+      .innerJoin(subjects, eq(generatedPapers.subjectId, subjects.id))
+      .where(eq(generatedPapers.id, id));
+
+    if (!row) return undefined;
 
     const paperQs = await db.select()
-      .from(paperQuestions)
-      .where(eq(paperQuestions.paperId, id));
+      .from(generatedQuestions)
+      .where(eq(generatedQuestions.paperId, id))
+      .orderBy(generatedQuestions.id); // Or order by marks, etc.
 
-    const questionIds = paperQs.map(pq => pq.questionId);
-    let paperQuestionsList: Question[] = [];
-
-    if (questionIds.length > 0) {
-      paperQuestionsList = await db.select()
-        .from(questions)
-        .where(inArray(questions.id, questionIds));
-    }
-
-    return { ...paper, questions: paperQuestionsList };
+    return { ...row.paper, subject: row.subjectName, questions: paperQs };
   }
 
-  async getPapers(): Promise<GeneratedPaper[]> {
-    return await db.select().from(generatedPapers).orderBy(desc(generatedPapers.createdAt));
+  async updatePaper(id: number, content: string): Promise<GeneratedPaper> {
+    const [updated] = await db.update(generatedPapers)
+      .set({ generatedContent: content })
+      .where(eq(generatedPapers.id, id))
+      .returning();
+
+    if (!updated) throw new Error("Paper not found");
+    return updated;
   }
 
-  async getUserPapers(userId: number): Promise<GeneratedPaper[]> {
-    return await db.select().from(generatedPapers)
+  async getPapers(): Promise<(GeneratedPaper & { subject?: string })[]> {
+    const rows = await db.select({
+      paper: generatedPapers,
+      subjectName: subjects.name
+    })
+      .from(generatedPapers)
+      .innerJoin(subjects, eq(generatedPapers.subjectId, subjects.id))
+      .orderBy(desc(generatedPapers.createdAt));
+
+    return rows.map(r => ({ ...r.paper, subject: r.subjectName }));
+  }
+
+  async getUserPapers(userId: number): Promise<(GeneratedPaper & { subject?: string })[]> {
+    const rows = await db.select({
+      paper: generatedPapers,
+      subjectName: subjects.name
+    })
+      .from(generatedPapers)
+      .innerJoin(subjects, eq(generatedPapers.subjectId, subjects.id))
       .where(eq(generatedPapers.createdBy, userId))
       .orderBy(desc(generatedPapers.createdAt));
+
+    return rows.map(r => ({ ...r.paper, subject: r.subjectName }));
   }
 
+  // Analytics
   async getDashboardStats() {
-    const allQuestions = await db.select().from(questions);
-    const allPapers = await db.select().from(generatedPapers).orderBy(desc(generatedPapers.createdAt)).limit(5);
+    const totalSubjects = await db.select({ count: sql<number>`count(*)` }).from(subjects).then(r => Number(r[0].count));
+    const totalPapers = await db.select({ count: sql<number>`count(*)` }).from(generatedPapers).then(r => Number(r[0].count));
+    const totalQuestionsGenerated = await db.select({ count: sql<number>`count(*)` }).from(generatedQuestions).then(r => Number(r[0].count));
 
-    const questionsBySubject: Record<string, number> = {};
-    const questionsByDifficulty: Record<string, number> = {};
+    // Group questions by difficulty
+    const diffRows = await db.select({
+      difficulty: generatedQuestions.difficulty,
+      count: sql<number>`count(*)`
+    }).from(generatedQuestions).groupBy(generatedQuestions.difficulty);
 
-    allQuestions.forEach(q => {
-      questionsBySubject[q.subject] = (questionsBySubject[q.subject] || 0) + 1;
-      questionsByDifficulty[q.difficulty] = (questionsByDifficulty[q.difficulty] || 0) + 1;
+    const questionsByDifficulty: Record<string, number> = { "Easy": 0, "Medium": 0, "Hard": 0 };
+    diffRows.forEach(row => {
+      questionsByDifficulty[row.difficulty] = Number(row.count);
     });
 
+    // Group questions by subject
+    const subjectRows = await db.select({
+      subjectName: subjects.name,
+      count: sql<number>`count(*)`
+    })
+      .from(generatedQuestions)
+      .innerJoin(generatedPapers, eq(generatedQuestions.paperId, generatedPapers.id))
+      .innerJoin(subjects, eq(generatedPapers.subjectId, subjects.id))
+      .groupBy(subjects.name);
+
+    const questionsBySubject: Record<string, number> = {};
+    subjectRows.forEach(row => {
+      questionsBySubject[row.subjectName] = Number(row.count);
+    });
+
+    const recentPapers = await db.select({
+      id: generatedPapers.id,
+      title: generatedPapers.title,
+      totalMarks: generatedPapers.totalMarks,
+      createdAt: generatedPapers.createdAt,
+      subject: subjects.name
+    })
+      .from(generatedPapers)
+      .innerJoin(subjects, eq(generatedPapers.subjectId, subjects.id))
+      .orderBy(desc(generatedPapers.createdAt))
+      .limit(5);
+
     return {
-      totalQuestions: allQuestions.length,
-      questionsBySubject,
+      totalSubjects,
+      totalPapers,
+      totalQuestionsGenerated,
       questionsByDifficulty,
-      totalPapers: await db.select({ count: sql<number>`count(*)` }).from(generatedPapers).then(r => Number(r[0].count)),
-      recentPapers: allPapers
+      questionsBySubject,
+      recentPapers
     };
   }
 }

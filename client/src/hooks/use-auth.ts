@@ -10,7 +10,14 @@ export function useAuth() {
   const { data: user, isLoading, error } = useQuery({
     queryKey: [api.auth.me.path],
     queryFn: async () => {
-      const res = await fetch(api.auth.me.path, { credentials: "include" });
+      const token = localStorage.getItem("token");
+      const headers: Record<string, string> = { "Accept": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(api.auth.me.path, {
+        headers,
+        credentials: "include"
+      });
       if (res.status === 401) return null;
       if (!res.ok) throw new Error("Failed to fetch user");
       return await res.json();
@@ -26,7 +33,7 @@ export function useAuth() {
         body: JSON.stringify(credentials),
         credentials: "include",
       });
-      
+
       if (!res.ok) {
         if (res.status === 401) throw new Error("Invalid credentials");
         throw new Error("Login failed");
@@ -34,6 +41,7 @@ export function useAuth() {
       return await res.json();
     },
     onSuccess: (data) => {
+      localStorage.setItem("token", data.token);
       queryClient.setQueryData([api.auth.me.path], data.user);
       setLocation("/");
     },
@@ -62,9 +70,7 @@ export function useAuth() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      // Assuming a logout endpoint exists or we just clear client state if session cookie is cleared by browser
-      // Ideally backend has /api/auth/logout. Implementing mock client-side only for now as it wasn't in schema
-      // In a real app, this would hit an endpoint.
+      localStorage.removeItem("token");
       queryClient.setQueryData([api.auth.me.path], null);
     },
     onSuccess: () => {
