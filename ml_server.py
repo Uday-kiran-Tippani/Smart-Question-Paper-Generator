@@ -16,11 +16,11 @@ try:
     if os.path.exists(MODEL_DIR):
         print(f"Loading Custom Deep Learning Model from {MODEL_DIR}...")
         tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR)
-        model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_DIR)
+        model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_DIR, low_cpu_mem_usage=True)
     else:
         print(f"Local model not found. Downloading fallback {FALLBACK_MODEL} from HuggingFace...")
         tokenizer = AutoTokenizer.from_pretrained(FALLBACK_MODEL)
-        model = AutoModelForSeq2SeqLM.from_pretrained(FALLBACK_MODEL)
+        model = AutoModelForSeq2SeqLM.from_pretrained(FALLBACK_MODEL, low_cpu_mem_usage=True)
     
     # Use GPU if available to speed up, otherwise use CPU
     device = "cuda" if torch.cuda.is_available() else "cpu"
