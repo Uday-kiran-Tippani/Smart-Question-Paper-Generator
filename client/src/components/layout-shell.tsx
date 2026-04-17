@@ -79,12 +79,12 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-64 border-r border-border bg-card sticky top-0 h-screen">
+      <aside className="hidden lg:block w-64 border-r border-border bg-card sticky top-0 h-screen print:hidden">
         <NavContent />
       </aside>
 
       {/* Mobile Sidebar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-40 px-4 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-40 px-4 flex items-center justify-between print:hidden">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
             <Sparkles className="h-5 w-5 text-primary-foreground" />

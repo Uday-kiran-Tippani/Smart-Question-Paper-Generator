@@ -1,6 +1,40 @@
 import { storage } from "../storage";
 import { GeneratePaperRequest, type QuestionBankItem, type InsertQuestionBankItem } from "@shared/schema";
-import { generateQuestionsFromGemini, type QuestionType } from "./gemini";
+export type QuestionType = 'Short' | 'Long' | 'MCQ' | 'Analytical';
+
+async function generateQuestionsFromML(
+    subjectName: string,
+    unitTitle: string,
+    syllabusContent: string,
+    questionType: QuestionType,
+    count: number
+): Promise<string[]> {
+    try {
+        const mlServerUrl = process.env.ML_SERVER_URL || "http://127.0.0.1:8000";
+        const response = await fetch(`${mlServerUrl}/generate-questions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                syllabus_content: syllabusContent,
+                count: count,
+                question_type: questionType
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`ML Server error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        return data.questions;
+    } catch (error) {
+        console.error("Local ML API Error:", error);
+        // Fallback gracefully if Python offline
+        return Array(count).fill(`Discuss the core concepts of ${unitTitle}.`);
+    }
+}
 
 // Helper for shuffling arrays
 function shuffleArray<T>(array: T[]): T[] {
@@ -58,12 +92,12 @@ export async function generateQuestionPaper(input: GeneratePaperRequest) {
             
             selectedTexts.push(...cachedTexts);
 
-            // If we lack total needed count from DB, fill remainder via Gemini AI
+            // If we lack total needed count from DB, fill remainder via Custom ML AI
             const deficit = countPerUnit - cachedTexts.length;
             if (deficit > 0) {
                 try {
-                    console.log(`Missing ${deficit} ${qType} questions for Unit ${unit.unitNumber}. Calling Gemini...`);
-                    const aiGenerated = await generateQuestionsFromGemini(
+                    console.log(`Missing ${deficit} ${qType} questions for Unit ${unit.unitNumber}. Calling Custom ML Model...`);
+                    const aiGenerated = await generateQuestionsFromML(
                         subject!.name,
                         unit.title,
                         unit.syllabusContent,
@@ -85,7 +119,7 @@ export async function generateQuestionPaper(input: GeneratePaperRequest) {
                         });
                     }
                 } catch (e: any) {
-                    console.error("Gemini Hybrid Generation Error:", e.message);
+                    console.error("Custom ML Hybrid Generation Error:", e.message);
                 }
             }
             
@@ -107,23 +141,23 @@ export async function generateQuestionPaper(input: GeneratePaperRequest) {
     // We need 8 Long questions and 8 Short questions across all relevant units.
     // To ensure fairness, we calculate the number of questions to pick per unit:
     const shortCountPerUnit = Math.ceil(8 / relevantUnits.length);
-    const longCountPerUnit = Math.ceil(8 / relevantUnits.length);
+    const longCountPerUnit = Math.ceil(16 / relevantUnits.length);
 
     let shortQsRaw = await getHybridQuestions("Short", shortCountPerUnit, 3, "Easy");
-    let longQsRaw = await getHybridQuestions("Long", longCountPerUnit, 15, "Medium");
+    let longQsRaw = await getHybridQuestions("Long", longCountPerUnit, 7, "Medium");
 
-    // Ensure we have exactly 8
+    // Ensure we have exactly exact required amounts
     const shortQuestions = shortQsRaw.slice(0, 8);
-    let longQuestions = longQsRaw.slice(0, 8);
+    let longQuestions = longQsRaw.slice(0, 16);
 
-    // If for some reason we got fewer than 8, we simply use whatever we have for Long Qs, 
+    // If for some reason we got fewer than 16, we simply use whatever we have for Long Qs, 
     // but ideally we should have generated enough. We pad if needed (edge case fallback).
-    while (longQuestions.length < 8 && longQuestions.length > 0) {
+    while (longQuestions.length < 16 && longQuestions.length > 0) {
         longQuestions.push(longQuestions[longQuestions.length - 1]);
     }
     
     // Fallback if absolutely empty
-    if (longQuestions.length === 0) longQuestions = new Array(8).fill("Explain the concept in detail.");
+    if (longQuestions.length === 0) longQuestions = new Array(16).fill("Explain the concept in detail.");
     if (shortQuestions.length < 8) {
        const required = 8 - shortQuestions.length;
        for (let i=0; i < required; i++) {
@@ -139,18 +173,21 @@ export async function generateQuestionPaper(input: GeneratePaperRequest) {
     paperText += `${'-'.repeat(40)}\n\n`;
 
     paperText += `SECTION A (4 x 15 = 60 Marks)\n`;
-    paperText += `Answer ALL Questions\n\n`;
+    paperText += `Answer ALL Questions with internal choice\n\n`;
 
     let qIndex = 1;
     for (let i = 0; i < 4; i++) { // Q1 to Q4
-        // Extract 2 questions for the OR format
-        const qA = longQuestions[i * 2];
-        const qB = longQuestions[i * 2 + 1];
+        // Clean markdown artifacts generated by LLMs just safely
+        const qA = longQuestions[i * 4].replace(/\*\*/g, "");
+        const qB = longQuestions[i * 4 + 1].replace(/\*\*/g, "");
+        const qC = longQuestions[i * 4 + 2].replace(/\*\*/g, "");
+        const qD = longQuestions[i * 4 + 3].replace(/\*\*/g, "");
 
-        paperText += `Q${qIndex}.\n`;
-        paperText += `a) ${qA}\n`;
+        paperText += `${qIndex}. a) ${qA} (8 marks)\n`;
+        paperText += `   b) ${qB} (7 marks)\n`;
         paperText += `   (OR)\n`;
-        paperText += `b) ${qB}\n\n`;
+        paperText += `   c) ${qC} (8 marks)\n`;
+        paperText += `   d) ${qD} (7 marks)\n\n`;
 
         qIndex++;
     }

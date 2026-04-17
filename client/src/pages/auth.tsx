@@ -153,14 +153,14 @@ function RegisterForm({ register }: { register: any }) {
         <CardContent className="space-y-4 px-0">
           <div className="space-y-2">
             <Label htmlFor="reg-name">Full Name</Label>
-            <Input id="reg-name" placeholder="John Doe" {...form.register("name")} />
+            <Input id="reg-name" placeholder="Enter you Full Name" {...form.register("name")} />
             {form.formState.errors.name && (
               <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="reg-email">Email</Label>
-            <Input id="reg-email" type="email" placeholder="john.doe@college.edu" {...form.register("email")} />
+            <Input id="reg-email" type="email" placeholder="Educator@college.edu" {...form.register("email")} />
             {form.formState.errors.email && (
               <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
             )}

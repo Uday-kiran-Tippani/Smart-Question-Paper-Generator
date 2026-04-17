@@ -4,3 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+my_custom_qg_model/
+generated paper samples/
+required_structure_of_paper/
+__pycache__/
+.venv/
+.env

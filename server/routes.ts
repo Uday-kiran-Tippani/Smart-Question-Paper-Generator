@@ -34,7 +34,7 @@ export async function registerRoutes(
   app.get(api.papers.list.path, requireAuth, paperController.getPapers);
   app.get(api.papers.get.path, requireAuth, paperController.getPaper);
   app.patch(api.papers.update.path, requireAuth, paperController.updatePaper);
-  app.get(api.papers.export.path, requireAuth, paperController.exportPaperPDF);
+  app.get(api.papers.export.path, paperController.exportPaperPDF);
 
   // === ANALYTICS ===
   app.get(api.analytics.dashboard.path, requireAuth, subjectController.getDashboardStats);
